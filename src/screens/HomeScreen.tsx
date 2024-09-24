@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
-import { View, Text, FlatList, Image, Pressable, StyleSheet } from 'react-native';
+import { View, Text, FlatList, Image, TouchableOpacity, StyleSheet, ScrollView } from 'react-native';
+import Icon from 'react-native-vector-icons/FontAwesome';
 
 type ArtTool = {
   id: string;
@@ -19,6 +20,8 @@ type Props = {
 const HomeScreen: React.FC<Props> = ({ navigation }) => {
   const [artTools, setArtTools] = useState<ArtTool[]>([]);
   const [loading, setLoading] = useState<boolean>(true);
+  const [favoriteIds, setFavoriteIds] = useState<Set<string>>(new Set());
+  const [selectedBrand, setSelectedBrand] = useState<string | null>(null);
 
   const fetchArtTools = async () => {
     try {
@@ -35,6 +38,24 @@ const HomeScreen: React.FC<Props> = ({ navigation }) => {
     fetchArtTools();
   }, []);
 
+  const handleHeartPress = (id: string) => {
+    setFavoriteIds((prev) => {
+      const newFavorites = new Set(prev);
+      if (newFavorites.has(id)) {
+        newFavorites.delete(id);
+      } else {
+        newFavorites.add(id);
+      }
+      return newFavorites;
+    });
+  };
+
+  const uniqueBrands = Array.from(new Set(artTools.map(tool => tool.brand)));
+
+  const filteredArtTools = selectedBrand
+    ? artTools.filter(tool => tool.brand === selectedBrand)
+    : artTools;
+
   const renderItem = ({ item }: { item: ArtTool }) => (
     <View style={styles.itemContainer}>
       <Image source={{ uri: item.image }} style={styles.image} />
@@ -42,10 +63,18 @@ const HomeScreen: React.FC<Props> = ({ navigation }) => {
         <Text style={styles.title}>{item.artName}</Text>
         <Text style={styles.price}>${item.price}</Text>
         <Text style={styles.deal}>Deal: {item.limitedTimeDeal * 100}% off</Text>
-        <Pressable onPress={() => navigation.navigate('Detail', { item })}>
+        <TouchableOpacity onPress={() => navigation.navigate('Detail', { id: item.id })}>
           <Text style={styles.detailButton}>View Details</Text>
-        </Pressable>
+        </TouchableOpacity>
       </View>
+      <TouchableOpacity onPress={() => handleHeartPress(item.id)}>
+        <Icon
+          name="heart"
+          size={24}
+          color={favoriteIds.has(item.id) ? "#ff6347" : "#ccc"}
+          style={styles.heartIcon}
+        />
+      </TouchableOpacity>
     </View>
   );
 
@@ -58,69 +87,110 @@ const HomeScreen: React.FC<Props> = ({ navigation }) => {
   }
 
   return (
-    <FlatList
-      data={artTools}
-      renderItem={renderItem}
-      keyExtractor={(item) => item.id}
-    />
+    <View style={{ flex: 1 }}>
+      <ScrollView horizontal style={styles.brandFilterContainer}>
+        {uniqueBrands.map(brand => (
+          <TouchableOpacity
+            key={brand}
+            style={[
+              styles.brandButton,
+              selectedBrand === brand && styles.selectedBrandButton
+            ]}
+            onPress={() => setSelectedBrand(selectedBrand === brand ? null : brand)}
+          >
+            <Text style={styles.brandButtonText}>{brand}</Text>
+          </TouchableOpacity>
+        ))}
+      </ScrollView>
+      <FlatList
+        data={filteredArtTools}
+        renderItem={renderItem}
+        keyExtractor={(item) => item.id}
+      />
+    </View>
   );
 };
 
 const styles = StyleSheet.create({
   itemContainer: {
-    flexDirection: 'row',           // Arrange items in a row
-    padding: 15,                    // Add padding inside the container
-    marginVertical: 10,             // Space between items
-    marginHorizontal: 20,           // Horizontal margin for card spacing
-    backgroundColor: '#fff',        // White background for the card
-    borderRadius: 12,               // Smooth rounded corners
-    shadowColor: '#000',            // Shadow color for iOS
-    shadowOffset: { width: 0, height: 4 }, // Shadow for iOS
-    shadowOpacity: 0.1,             // Light shadow opacity
-    shadowRadius: 8,                // Smooth shadow spread for iOS
-    elevation: 6,                   // Elevation for Android shadow
+    flexDirection: 'row',
+    padding: 15,
+    marginVertical: 10,
+    marginHorizontal: 20,
+    backgroundColor: '#fff',
+    borderRadius: 12,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.1,
+    shadowRadius: 8,
+    elevation: 6,
+    alignItems: 'center', // Center items vertically
   },
   image: {
-    width: 90,                      // Larger image size for better visibility
+    width: 90,
     height: 90,
-    borderRadius: 8,                // Rounded corners for the image
-    marginRight: 15,                // Space between image and text
-    backgroundColor: '#f0f0f0',     // Placeholder background for images
+    borderRadius: 8,
+    marginRight: 15,
+    backgroundColor: '#f0f0f0',
   },
   infoContainer: {
-    flex: 1,                        // Takes the remaining space after the image
-    justifyContent: 'center',       // Center content vertically
+    flex: 1,
+    justifyContent: 'center',
   },
   title: {
-    fontSize: 18,                   // Font size for item name
-    fontWeight: 'bold',             // Bold font for emphasis
-    color: '#333',                  // Dark color for readability
-    marginBottom: 6,                // Space below title
+    fontSize: 18,
+    fontWeight: 'bold',
+    color: '#333',
+    marginBottom: 6,
   },
   price: {
-    fontSize: 16,                   // Font size for price
-    color: '#ff6347',               // Attractive "tomato" color for price
-    fontWeight: '600',              // Slightly bold to highlight price
-    marginBottom: 6,                // Space between price and deal
+    fontSize: 16,
+    color: '#ff6347',
+    fontWeight: '600',
+    marginBottom: 6,
   },
   deal: {
-    fontSize: 14,                   // Smaller font size for the deal text
-    color: '#228B22',               // Green color for the deal percentage
-    fontWeight: '500',              // Medium font for emphasis
+    fontSize: 14,
+    color: '#228B22',
+    fontWeight: '500',
   },
   detailButton: {
-    fontSize: 14,                   // Font size for "View Details" button
-    color: '#1E90FF',               // Bright blue for clickable text
-    marginTop: 8,                   // Margin at the top for spacing
+    fontSize: 14,
+    color: '#1E90FF',
+    marginTop: 8,
+  },
+  heartIcon: {
+    marginLeft: 10, // Space between info and heart icon
   },
   loading: {
-    flex: 1,                        // Takes full screen
-    justifyContent: 'center',       // Center content vertically
-    alignItems: 'center',           // Center content horizontally
-    backgroundColor: '#f4f4f4',     // Light gray background for loading screen
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    backgroundColor: '#f4f4f4',
+  },
+  brandFilterContainer: {
+    paddingVertical: 10,
+    paddingHorizontal: 20,
+    backgroundColor: '#f4f4f4',
+  },
+  brandButton: {
+    paddingVertical: 10,
+    paddingHorizontal: 15,
+    backgroundColor: '#fff',
+    borderRadius: 20,
+    marginRight: 10,
+    borderWidth: 1,
+    borderColor: '#ccc',
+    width: 100, // Fixed width for buttons
+    alignItems: 'center', // Center text horizontally
+  },
+  selectedBrandButton: {
+    backgroundColor: '#ff6347',
+    borderColor: '#ff6347',
+  },
+  brandButtonText: {
+    color: '#333',
   },
 });
-
-
 
 export default HomeScreen;
