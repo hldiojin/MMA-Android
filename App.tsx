@@ -43,16 +43,16 @@ function BottomTabs() {
 
 export default function App() {
   return (
-    <GestureHandlerRootView>
-        <MenuProvider>
-          <NavigationContainer>
-            <Stack.Navigator>
-              <Stack.Screen name="Main" component={BottomTabs} options={{ headerShown: false }} />
-              <Stack.Screen name="Detail" component={DetailScreen} options={{ title: 'Detail' }} />
-            </Stack.Navigator>
-          </NavigationContainer>
-          <Toast />
-        </MenuProvider>
-    </GestureHandlerRootView>  
+    <GestureHandlerRootView style={{ flex: 1 }}>
+      <MenuProvider>
+        <NavigationContainer>
+          <Stack.Navigator>
+            <Stack.Screen name="Main" component={BottomTabs} options={{ headerShown: false }} />
+            <Stack.Screen name="Detail" component={DetailScreen} options={{ title: 'Detail' }} />
+          </Stack.Navigator>
+        </NavigationContainer>
+        <Toast />
+      </MenuProvider>
+    </GestureHandlerRootView>
   );
 }

@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
-import { View, Text, FlatList, Image, TouchableOpacity, StyleSheet, ScrollView } from 'react-native';
+import { View, Text, FlatList, Image, TouchableOpacity, StyleSheet, ScrollView, Dimensions } from 'react-native';
 import Icon from 'react-native-vector-icons/FontAwesome';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 
 type ArtTool = {
   id: string;
@@ -20,7 +21,7 @@ type Props = {
 const HomeScreen: React.FC<Props> = ({ navigation }) => {
   const [artTools, setArtTools] = useState<ArtTool[]>([]);
   const [loading, setLoading] = useState<boolean>(true);
-  const [favoriteIds, setFavoriteIds] = useState<Set<string>>(new Set());
+  const [favoriteItems, setFavoriteItems] = useState<ArtTool[]>([]);
   const [selectedBrand, setSelectedBrand] = useState<string | null>(null);
 
   const fetchArtTools = async () => {
@@ -34,18 +35,27 @@ const HomeScreen: React.FC<Props> = ({ navigation }) => {
     }
   };
 
+  const loadFavorites = async () => {
+    try {
+      const storedFavorites = await AsyncStorage.getItem('favorites');
+      if (storedFavorites) {
+        setFavoriteItems(JSON.parse(storedFavorites));
+      }
+    } catch (error) {
+      console.error("Error loading favorites: ", error);
+    }
+  };
+
   useEffect(() => {
     fetchArtTools();
+    loadFavorites();
   }, []);
 
-  const handleHeartPress = (id: string) => {
-    setFavoriteIds((prev) => {
-      const newFavorites = new Set(prev);
-      if (newFavorites.has(id)) {
-        newFavorites.delete(id);
-      } else {
-        newFavorites.add(id);
-      }
+  const handleHeartPress = async (item: ArtTool) => {
+    setFavoriteItems((prev) => {
+      const isFavorite = prev.some(favItem => favItem.id === item.id);
+      const newFavorites = isFavorite ? prev.filter(favItem => favItem.id !== item.id) : [...prev, item];
+      AsyncStorage.setItem('favorites', JSON.stringify(newFavorites));
       return newFavorites;
     });
   };
@@ -57,25 +67,22 @@ const HomeScreen: React.FC<Props> = ({ navigation }) => {
     : artTools;
 
   const renderItem = ({ item }: { item: ArtTool }) => (
-    <View style={styles.itemContainer}>
+    <TouchableOpacity onPress={() => navigation.navigate('Detail', { id: item.id })} style={styles.itemContainer}>
       <Image source={{ uri: item.image }} style={styles.image} />
       <View style={styles.infoContainer}>
         <Text style={styles.title}>{item.artName}</Text>
         <Text style={styles.price}>${item.price}</Text>
         <Text style={styles.deal}>Deal: {item.limitedTimeDeal * 100}% off</Text>
-        <TouchableOpacity onPress={() => navigation.navigate('Detail', { id: item.id })}>
-          <Text style={styles.detailButton}>View Details</Text>
-        </TouchableOpacity>
       </View>
-      <TouchableOpacity onPress={() => handleHeartPress(item.id)}>
+      <TouchableOpacity onPress={() => handleHeartPress(item)} style={styles.heartIconContainer}>
         <Icon
           name="heart"
           size={24}
-          color={favoriteIds.has(item.id) ? "#ff6347" : "#ccc"}
+          color={favoriteItems.some(favItem => favItem.id === item.id) ? "#ff6347" : "#ccc"}
           style={styles.heartIcon}
         />
       </TouchableOpacity>
-    </View>
+    </TouchableOpacity>
   );
 
   if (loading) {
@@ -106,17 +113,22 @@ const HomeScreen: React.FC<Props> = ({ navigation }) => {
         data={filteredArtTools}
         renderItem={renderItem}
         keyExtractor={(item) => item.id}
+        numColumns={2}
+        columnWrapperStyle={styles.row}
+        contentContainerStyle={styles.listContainer}
       />
     </View>
   );
 };
 
 const styles = StyleSheet.create({
+  row: {
+    justifyContent: 'space-between',
+    paddingHorizontal: 10,
+  },
   itemContainer: {
-    flexDirection: 'row',
-    padding: 15,
-    marginVertical: 10,
-    marginHorizontal: 20,
+    flex: 1,
+    margin: 10,
     backgroundColor: '#fff',
     borderRadius: 12,
     shadowColor: '#000',
@@ -124,40 +136,39 @@ const styles = StyleSheet.create({
     shadowOpacity: 0.1,
     shadowRadius: 8,
     elevation: 6,
-    alignItems: 'center', // Center items vertically
+    padding: 10,
+    position: 'relative', // To position the heart icon absolutely
   },
   image: {
-    width: 90,
-    height: 90,
+    width: '100%',
+    height: 150,
     borderRadius: 8,
-    marginRight: 15,
     backgroundColor: '#f0f0f0',
   },
   infoContainer: {
-    flex: 1,
-    justifyContent: 'center',
+    marginTop: 10,
   },
   title: {
-    fontSize: 18,
+    fontSize: 16,
     fontWeight: 'bold',
     color: '#333',
     marginBottom: 6,
   },
   price: {
-    fontSize: 16,
-    color: '#ff6347',
+    fontSize: 14,
+    color: '#1E90FF',
     fontWeight: '600',
     marginBottom: 6,
   },
   deal: {
-    fontSize: 14,
+    fontSize: 12,
     color: '#228B22',
     fontWeight: '500',
   },
-  detailButton: {
-    fontSize: 14,
-    color: '#1E90FF',
-    marginTop: 8,
+  heartIconContainer: {
+    position: 'absolute',
+    top: 10,
+    right: 10,
   },
   heartIcon: {
     marginLeft: 10, // Space between info and heart icon
@@ -172,6 +183,10 @@ const styles = StyleSheet.create({
     paddingVertical: 10,
     paddingHorizontal: 20,
     backgroundColor: '#f4f4f4',
+    marginBottom: 10, // Add margin to separate from items
+  },
+  listContainer: {
+    paddingBottom: 10, // Add padding to the bottom of the list
   },
   brandButton: {
     paddingVertical: 10,
@@ -182,14 +197,27 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: '#ccc',
     width: 100, // Fixed width for buttons
+    height: 40, // Fixed height for buttons
     alignItems: 'center', // Center text horizontally
+    justifyContent: 'center', // Center text vertically
   },
   selectedBrandButton: {
-    backgroundColor: '#ff6347',
-    borderColor: '#ff6347',
+    backgroundColor: '#1E90FF',
+    borderColor: '#1E90FF',
   },
   brandButtonText: {
     color: '#333',
+  },
+  favoriteButton: {
+    padding: 10,
+    backgroundColor: '#1E90FF',
+    borderRadius: 20,
+    alignItems: 'center',
+    margin: 10,
+  },
+  favoriteButtonText: {
+    color: '#fff',
+    fontWeight: 'bold',
   },
 });
 
