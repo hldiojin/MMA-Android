@@ -17,6 +17,7 @@ type FavoriteContextType = {
   addFavorite: (item: ArtTool) => void;
   removeFavorite: (id: string) => void;
   isFavorite: (id: string) => boolean;
+  clearFavorites: () => void; // Add clearFavorites to the context type
 };
 
 const FavoriteContext = createContext<FavoriteContextType | undefined>(undefined);
@@ -63,8 +64,13 @@ export const FavoriteProvider: React.FC<FavoriteProviderProps> = ({ children }) 
     return favoriteItems.some(favItem => favItem.id === id);
   };
 
+  const clearFavorites = () => {
+    setFavoriteItems([]);
+    AsyncStorage.removeItem('favorites');
+  };
+
   return (
-    <FavoriteContext.Provider value={{ favoriteItems, addFavorite, removeFavorite, isFavorite }}>
+    <FavoriteContext.Provider value={{ favoriteItems, addFavorite, removeFavorite, isFavorite, clearFavorites }}>
       {children}
     </FavoriteContext.Provider>
   );

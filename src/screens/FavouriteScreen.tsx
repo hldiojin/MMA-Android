@@ -1,6 +1,6 @@
-import React, { useState, useEffect } from 'react';
-import { View, Text, FlatList, Image, TouchableOpacity, StyleSheet } from 'react-native';
-import { NavigationProp, useFocusEffect, useNavigation } from '@react-navigation/native';
+import React from 'react';
+import { View, Text, FlatList, Image, TouchableOpacity, StyleSheet, Alert } from 'react-native';
+import { NavigationProp, useNavigation } from '@react-navigation/native';
 import { Swipeable } from 'react-native-gesture-handler';
 import { Ionicons } from '@expo/vector-icons'; // Using Ionicons for icons
 import { useFavorite } from './context/FavoriteContext'; // Đảm bảo đường dẫn đúng
@@ -22,10 +22,27 @@ type RootStackParamList = {
 
 const FavouriteScreen: React.FC = () => {
   const navigation = useNavigation<NavigationProp<RootStackParamList>>();
-  const { favoriteItems, removeFavorite } = useFavorite();
+  const { favoriteItems, removeFavorite, clearFavorites } = useFavorite();
 
   const handleDelete = (id: string) => {
     removeFavorite(id);
+  };
+
+  const handleClearFavorites = () => {
+    Alert.alert(
+      "Clear All Favorites",
+      "Are you sure you want to remove all favorite items?",
+      [
+        {
+          text: "Cancel",
+          style: "cancel",
+        },
+        {
+          text: "Yes",
+          onPress: () => clearFavorites(),
+        },
+      ]
+    );
   };
 
   const renderRightActions = (id: string) => (
@@ -50,10 +67,19 @@ const FavouriteScreen: React.FC = () => {
 
   return (
     <View style={{ flex: 1 }}>
+      {/* Add Clear All Button */}
+      {favoriteItems.length > 0 && (
+        <TouchableOpacity style={styles.clearButton} onPress={handleClearFavorites}>
+          <Ionicons name="trash-bin-outline" size={20} color="white" />
+          <Text style={styles.clearButtonText}>Clear All</Text>
+        </TouchableOpacity>
+      )}
+      
       <FlatList
         data={favoriteItems}
         renderItem={renderItem}
         keyExtractor={(item) => item.id}
+        contentContainerStyle={styles.listContainer} // Added padding to avoid overlap
       />
     </View>
   );
@@ -75,13 +101,13 @@ const styles = StyleSheet.create({
     shadowRadius: 10,
     elevation: 8,
     padding: 12,
-    overflow: 'hidden', // To avoid overflows for rounded corners
+    overflow: 'hidden',
   },
   image: {
     width: '100%',
     height: 180,
     borderRadius: 10,
-    resizeMode: 'cover', // Keep aspect ratio
+    resizeMode: 'cover',
     backgroundColor: '#f0f0f0',
   },
   infoContainer: {
@@ -111,18 +137,33 @@ const styles = StyleSheet.create({
   listContainer: {
     paddingBottom: 20,
     paddingHorizontal: 5,
+    paddingTop: 10, // Added padding to avoid overlap with Clear All button
   },
   deleteButton: {
     backgroundColor: '#FF6347',
     justifyContent: 'center',
     alignItems: 'center',
-    width: '30%', // Adjusted width
+    width: '30%',
     height: '100%',
     borderTopRightRadius: 15,
     borderBottomRightRadius: 15,
     flexDirection: 'row',
   },
   deleteButtonText: {
+    color: 'white',
+    fontWeight: 'bold',
+    marginLeft: 5,
+  },
+  clearButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: '#FF6347',
+    padding: 12,
+    borderRadius: 25,
+    margin: 10,
+  },
+  clearButtonText: {
     color: 'white',
     fontWeight: 'bold',
     marginLeft: 5,

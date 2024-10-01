@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
-import { View, Text, FlatList, Image, TouchableOpacity, StyleSheet, ScrollView } from 'react-native';
+import { View, Text, FlatList, Image, TouchableOpacity, StyleSheet, ScrollView, TextInput } from 'react-native';
 import Icon from 'react-native-vector-icons/FontAwesome';
-import { useFavorite } from './context/FavoriteContext'; // Đảm bảo đường dẫn đúng
+import { useFavorite } from './context/FavoriteContext';
 
 type ArtTool = {
   id: string;
@@ -22,6 +22,7 @@ const HomeScreen: React.FC<Props> = ({ navigation }) => {
   const [artTools, setArtTools] = useState<ArtTool[]>([]);
   const [loading, setLoading] = useState<boolean>(true);
   const [selectedBrand, setSelectedBrand] = useState<string | null>(null);
+  const [searchKeyword, setSearchKeyword] = useState<string>('');
   const { favoriteItems, addFavorite, removeFavorite, isFavorite } = useFavorite();
 
   const fetchArtTools = async () => {
@@ -49,15 +50,35 @@ const HomeScreen: React.FC<Props> = ({ navigation }) => {
 
   const uniqueBrands = Array.from(new Set(artTools.map(tool => tool.brand)));
 
-  const filteredArtTools = selectedBrand
-    ? artTools.filter(tool => tool.brand === selectedBrand)
-    : artTools;
+  const filteredArtTools = artTools.filter(tool => {
+    const matchesBrand = selectedBrand ? tool.brand === selectedBrand : true;
+    const matchesSearch = tool.artName.toLowerCase().includes(searchKeyword.toLowerCase());
+    return matchesBrand && matchesSearch;
+  });
+
+  const highlightKeyword = (text: string, keyword: string) => {
+    if (!keyword) return text;
+    const parts = text.split(new RegExp(`(${keyword})`, 'gi'));
+    return (
+      <Text>
+        {parts.map((part, index) =>
+          part.toLowerCase() === keyword.toLowerCase() ? (
+            <Text key={index} style={styles.highlight}>{part}</Text>
+          ) : (
+            part
+          )
+        )}
+      </Text>
+    );
+  };
 
   const renderItem = ({ item }: { item: ArtTool }) => (
     <TouchableOpacity onPress={() => navigation.navigate('Detail', { id: item.id })} style={styles.itemContainer}>
       <Image source={{ uri: item.image }} style={styles.image} />
       <View style={styles.infoContainer}>
-        <Text style={styles.title}>{item.artName}</Text>
+        <Text style={styles.title}>
+          {highlightKeyword(item.artName, searchKeyword)}
+        </Text>
         <Text style={styles.price}>${item.price}</Text>
         <Text style={styles.deal}>Deal: {item.limitedTimeDeal * 100}% off</Text>
       </View>
@@ -82,6 +103,12 @@ const HomeScreen: React.FC<Props> = ({ navigation }) => {
 
   return (
     <View style={{ flex: 1 }}>
+      <TextInput
+        style={styles.searchBar}
+        placeholder="Search"
+        value={searchKeyword}
+        onChangeText={setSearchKeyword}
+      />
       <ScrollView horizontal style={styles.brandFilterContainer}>
         {uniqueBrands.map(brand => (
           <TouchableOpacity
@@ -109,6 +136,17 @@ const HomeScreen: React.FC<Props> = ({ navigation }) => {
 };
 
 const styles = StyleSheet.create({
+  searchBar: {
+    padding: 10,
+    borderWidth: 1,
+    borderColor: '#ccc',
+    borderRadius: 20,
+    margin: 10,
+    fontSize: 16,
+  },
+  highlight: {
+    backgroundColor: 'yellow',
+  },
   row: {
     justifyContent: 'space-between',
     paddingHorizontal: 10,
@@ -124,7 +162,7 @@ const styles = StyleSheet.create({
     shadowRadius: 8,
     elevation: 6,
     padding: 10,
-    position: 'relative', // To position the heart icon absolutely
+    position: 'relative',
   },
   image: {
     width: '100%',
@@ -158,7 +196,7 @@ const styles = StyleSheet.create({
     right: 10,
   },
   heartIcon: {
-    marginLeft: 10, // Space between info and heart icon
+    marginLeft: 10,
   },
   loading: {
     flex: 1,
@@ -170,10 +208,10 @@ const styles = StyleSheet.create({
     paddingVertical: 10,
     paddingHorizontal: 20,
     backgroundColor: '#f4f4f4',
-    marginBottom: 10, // Add margin to separate from items
+    marginBottom: 10,
   },
   listContainer: {
-    paddingBottom: 10, // Add padding to the bottom of the list
+    paddingBottom: 10,
   },
   brandButton: {
     paddingVertical: 10,
@@ -183,10 +221,10 @@ const styles = StyleSheet.create({
     marginRight: 10,
     borderWidth: 1,
     borderColor: '#ccc',
-    width: 100, // Fixed width for buttons
-    height: 40, // Fixed height for buttons
-    alignItems: 'center', // Center text horizontally
-    justifyContent: 'center', // Center text vertically
+    width: 100,
+    height: 40,
+    alignItems: 'center',
+    justifyContent: 'center',
   },
   selectedBrandButton: {
     backgroundColor: '#1E90FF',
@@ -194,17 +232,6 @@ const styles = StyleSheet.create({
   },
   brandButtonText: {
     color: '#333',
-  },
-  favoriteButton: {
-    padding: 10,
-    backgroundColor: '#1E90FF',
-    borderRadius: 20,
-    alignItems: 'center',
-    margin: 10,
-  },
-  favoriteButtonText: {
-    color: '#fff',
-    fontWeight: 'bold',
   },
 });
 
