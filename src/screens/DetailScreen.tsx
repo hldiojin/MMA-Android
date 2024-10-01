@@ -1,9 +1,22 @@
 import React, { useState, useEffect } from 'react';
-import { View, Text, ActivityIndicator, TouchableOpacity, StyleSheet } from 'react-native';
-import AsyncStorage from '@react-native-async-storage/async-storage';
+import { View, Text, ActivityIndicator, TouchableOpacity, StyleSheet, Image, FlatList } from 'react-native';
 import Icon from 'react-native-vector-icons/FontAwesome';
-import { RouteProp } from '@react-navigation/native';
-import { useFavorite } from './context/FavoriteContext'; // Đảm bảo đường dẫn đúng
+import { RouteProp, useRoute } from '@react-navigation/native';
+import { useFavorite } from './context/FavoriteContext'; 
+
+type Rating = {
+  userId: string;
+  userName: string;
+  rating: number;
+  ratingDate: string;
+};
+
+type Comment = {
+  userId: string;
+  userName: string;
+  comment: string;
+  commentDate: string;
+};
 
 type ArtTool = {
   id: string;
@@ -14,6 +27,8 @@ type ArtTool = {
   image: string;
   brand: string;
   limitedTimeDeal: number;
+  ratings: Rating[];
+  comments: Comment[];
 };
 
 type RootStackParamList = {
@@ -22,15 +37,12 @@ type RootStackParamList = {
 
 type DetailScreenRouteProp = RouteProp<RootStackParamList, 'Detail'>;
 
-type Props = {
-  route: DetailScreenRouteProp;
-};
-
-const DetailScreen: React.FC<Props> = ({ route }) => {
+const DetailScreen: React.FC = () => {
+  const route = useRoute<DetailScreenRouteProp>();
   const { id } = route.params;
   const [artTool, setArtTool] = useState<ArtTool | null>(null);
   const [loading, setLoading] = useState<boolean>(true);
-  const { favoriteItems, addFavorite, removeFavorite, isFavorite } = useFavorite();
+  const { addFavorite, removeFavorite, isFavorite } = useFavorite();
 
   const fetchArtToolDetail = async () => {
     try {
@@ -40,12 +52,13 @@ const DetailScreen: React.FC<Props> = ({ route }) => {
       setLoading(false);
     } catch (error) {
       console.error('Error fetching art tool detail: ', error);
+      setLoading(false);
     }
   };
 
   useEffect(() => {
     fetchArtToolDetail();
-  }, []);
+  }, [id]);
 
   const handleFavoritePress = () => {
     if (artTool) {
@@ -57,6 +70,29 @@ const DetailScreen: React.FC<Props> = ({ route }) => {
     }
   };
 
+  // Calculate average rating
+  const calculateAverageRating = () => {
+    if (artTool?.ratings.length) {
+      const totalRating = artTool.ratings.reduce((sum, rating) => sum + rating.rating, 0);
+      return (totalRating / artTool.ratings.length).toFixed(1); // Fix to 1 decimal place
+    }
+    return '0.0';
+  };
+
+  // Combine ratings and comments by userId
+  const getCommentsWithRatings = () => {
+    if (artTool) {
+      return artTool.comments.map(comment => {
+        const userRating = artTool.ratings.find(rating => rating.userId === comment.userId);
+        return {
+          ...comment,
+          rating: userRating?.rating || 0,
+        };
+      });
+    }
+    return [];
+  };
+
   if (loading) {
     return (
       <View style={styles.loading}>
@@ -66,13 +102,51 @@ const DetailScreen: React.FC<Props> = ({ route }) => {
     );
   }
 
+  if (!artTool) {
+    return (
+      <View style={styles.loading}>
+        <Text style={styles.errorText}>Error loading art tool details.</Text>
+      </View>
+    );
+  }
+
   return (
     <View style={styles.container}>
-      {/* Render art tool details here */}
+      <Image source={{ uri: artTool.image }} style={styles.image} />
+      <Text style={styles.title}>{artTool.artName}</Text>
+      <Text style={styles.description}>{artTool.description}</Text>
+      <Text style={styles.price}>${artTool.price}</Text>
+      
+      {/* Average Rating */}
+      <View style={styles.ratingContainer}>
+        <Icon name="star" size={24} color="#FFD700" />
+        <Text style={styles.averageRatingText}>{calculateAverageRating()} / 5</Text>
+        <Text style={styles.totalRatings}>({artTool.ratings.length} ratings)</Text>
+      </View>
+
+      {/* Favorite Button */}
       <TouchableOpacity onPress={handleFavoritePress} style={styles.favoriteButton}>
         <Icon name="heart" size={24} color={isFavorite(id) ? "#ff6347" : "#ccc"} />
         <Text style={styles.favoriteButtonText}>{isFavorite(id) ? "Remove from Favorites" : "Add to Favorites"}</Text>
       </TouchableOpacity>
+
+      {/* Comments Section */}
+      <Text style={styles.commentsTitle}>Comments & Ratings:</Text>
+      <FlatList
+        data={getCommentsWithRatings()}
+        keyExtractor={(item) => item.userId}
+        renderItem={({ item }) => (
+          <View style={styles.commentItem}>
+            <Text style={styles.commentUser}>{item.userName}</Text>
+            <View style={styles.commentRatingContainer}>
+              <Icon name="star" size={16} color="#FFD700" />
+              <Text style={styles.userRatingText}>{item.rating} / 5</Text>
+            </View>
+            <Text style={styles.commentText}>{item.comment}</Text>
+            <Text style={styles.commentDate}>{new Date(item.commentDate).toLocaleDateString()}</Text>
+          </View>
+        )}
+      />
     </View>
   );
 };
@@ -87,6 +161,40 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     alignItems: 'center',
   },
+  image: {
+    width: '100%',
+    height: 200,
+    borderRadius: 10,
+    marginBottom: 20,
+  },
+  title: {
+    fontSize: 24,
+    fontWeight: 'bold',
+    marginBottom: 10,
+  },
+  description: {
+    fontSize: 16,
+    marginBottom: 10,
+  },
+  price: {
+    fontSize: 20,
+    fontWeight: 'bold',
+    marginBottom: 20,
+  },
+  ratingContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginBottom: 20,
+  },
+  averageRatingText: {
+    fontSize: 20,
+    marginLeft: 10,
+  },
+  totalRatings: {
+    marginLeft: 5,
+    fontSize: 16,
+    color: '#777',
+  },
   favoriteButton: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -100,6 +208,38 @@ const styles = StyleSheet.create({
     color: 'white',
     fontWeight: 'bold',
     marginLeft: 5,
+  },
+  commentsTitle: {
+    fontSize: 18,
+    fontWeight: 'bold',
+    marginTop: 20,
+  },
+  commentItem: {
+    padding: 10,
+    borderBottomWidth: 1,
+    borderBottomColor: '#ddd',
+  },
+  commentUser: {
+    fontWeight: 'bold',
+  },
+  commentRatingContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginVertical: 5,
+  },
+  userRatingText: {
+    marginLeft: 5,
+    fontSize: 16,
+    color: '#333',
+  },
+  commentText: {
+    fontSize: 16,
+    marginTop: 5,
+  },
+  commentDate: {
+    fontSize: 12,
+    color: '#888',
+    marginTop: 5,
   },
   errorText: {
     fontSize: 18,

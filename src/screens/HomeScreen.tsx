@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { View, Text, FlatList, Image, TouchableOpacity, StyleSheet, ScrollView } from 'react-native';
 import Icon from 'react-native-vector-icons/FontAwesome';
-import AsyncStorage from '@react-native-async-storage/async-storage';
+import { useFavorite } from './context/FavoriteContext'; // Đảm bảo đường dẫn đúng
 
 type ArtTool = {
   id: string;
@@ -21,8 +21,8 @@ type Props = {
 const HomeScreen: React.FC<Props> = ({ navigation }) => {
   const [artTools, setArtTools] = useState<ArtTool[]>([]);
   const [loading, setLoading] = useState<boolean>(true);
-  const [favoriteItems, setFavoriteItems] = useState<ArtTool[]>([]);
   const [selectedBrand, setSelectedBrand] = useState<string | null>(null);
+  const { favoriteItems, addFavorite, removeFavorite, isFavorite } = useFavorite();
 
   const fetchArtTools = async () => {
     try {
@@ -35,29 +35,16 @@ const HomeScreen: React.FC<Props> = ({ navigation }) => {
     }
   };
 
-  const loadFavorites = async () => {
-    try {
-      const storedFavorites = await AsyncStorage.getItem('favorites');
-      if (storedFavorites) {
-        setFavoriteItems(JSON.parse(storedFavorites));
-      }
-    } catch (error) {
-      console.error("Error loading favorites: ", error);
-    }
-  };
-
   useEffect(() => {
     fetchArtTools();
-    loadFavorites();
   }, []);
 
-  const handleHeartPress = async (item: ArtTool) => {
-    setFavoriteItems((prev) => {
-      const isFavorite = prev.some(favItem => favItem.id === item.id);
-      const newFavorites = isFavorite ? prev.filter(favItem => favItem.id !== item.id) : [...prev, item];
-      AsyncStorage.setItem('favorites', JSON.stringify(newFavorites));
-      return newFavorites;
-    });
+  const handleHeartPress = (item: ArtTool) => {
+    if (isFavorite(item.id)) {
+      removeFavorite(item.id);
+    } else {
+      addFavorite(item);
+    }
   };
 
   const uniqueBrands = Array.from(new Set(artTools.map(tool => tool.brand)));
@@ -78,7 +65,7 @@ const HomeScreen: React.FC<Props> = ({ navigation }) => {
         <Icon
           name="heart"
           size={24}
-          color={favoriteItems.some(favItem => favItem.id === item.id) ? "#ff6347" : "#ccc"}
+          color={isFavorite(item.id) ? "#ff6347" : "#ccc"}
           style={styles.heartIcon}
         />
       </TouchableOpacity>

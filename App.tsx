@@ -9,6 +9,7 @@ import DetailScreen from './src/screens/DetailScreen';
 import { MenuProvider } from 'react-native-popup-menu';
 import Toast from 'react-native-toast-message';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
+import { FavoriteProvider } from './src/screens/context/FavoriteContext'; // Đảm bảo đường dẫn đúng
 
 const Tab = createBottomTabNavigator();
 const Stack = createNativeStackNavigator();
@@ -45,13 +46,15 @@ export default function App() {
   return (
     <GestureHandlerRootView style={{ flex: 1 }}>
       <MenuProvider>
-        <NavigationContainer>
-          <Stack.Navigator>
-            <Stack.Screen name="Main" component={BottomTabs} options={{ headerShown: false }} />
-            <Stack.Screen name="Detail" component={DetailScreen} options={{ title: 'Detail' }} />
-          </Stack.Navigator>
-        </NavigationContainer>
-        <Toast />
+        <FavoriteProvider>
+          <NavigationContainer>
+            <Stack.Navigator>
+              <Stack.Screen name="Main" component={BottomTabs} options={{ headerShown: false }} />
+              <Stack.Screen name="Detail" component={DetailScreen} options={{ title: 'Detail' }} />
+            </Stack.Navigator>
+          </NavigationContainer>
+          <Toast />
+        </FavoriteProvider>
       </MenuProvider>
     </GestureHandlerRootView>
   );

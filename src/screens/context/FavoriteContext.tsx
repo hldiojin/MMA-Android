@@ -1,4 +1,4 @@
-import React, { createContext, useContext, useState, useEffect, useMemo, ReactNode } from 'react';
+import React, { createContext, useContext, useState, useEffect, ReactNode } from 'react';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 
 type ArtTool = {
@@ -36,38 +36,35 @@ export const FavoriteProvider: React.FC<FavoriteProviderProps> = ({ children }) 
           setFavoriteItems(JSON.parse(storedFavorites));
         }
       } catch (error) {
-        console.error('Error loading favorites: ', error);
+        console.error("Error loading favorites: ", error);
       }
     };
 
     loadFavorites();
   }, []);
 
-  const addFavorite = async (item: ArtTool) => {
-    const newFavorites = [...favoriteItems, item];
-    setFavoriteItems(newFavorites);
-    await AsyncStorage.setItem('favorites', JSON.stringify(newFavorites));
+  const addFavorite = (item: ArtTool) => {
+    setFavoriteItems((prev) => {
+      const newFavorites = [...prev, item];
+      AsyncStorage.setItem('favorites', JSON.stringify(newFavorites));
+      return newFavorites;
+    });
   };
 
-  const removeFavorite = async (id: string) => {
-    const newFavorites = favoriteItems.filter(item => item.id !== id);
-    setFavoriteItems(newFavorites);
-    await AsyncStorage.setItem('favorites', JSON.stringify(newFavorites));
+  const removeFavorite = (id: string) => {
+    setFavoriteItems((prev) => {
+      const newFavorites = prev.filter(favItem => favItem.id !== id);
+      AsyncStorage.setItem('favorites', JSON.stringify(newFavorites));
+      return newFavorites;
+    });
   };
 
   const isFavorite = (id: string) => {
-    return favoriteItems.some(item => item.id === id);
+    return favoriteItems.some(favItem => favItem.id === id);
   };
 
-  const value = useMemo(() => ({
-    favoriteItems,
-    addFavorite,
-    removeFavorite,
-    isFavorite,
-  }), [favoriteItems]);
-
   return (
-    <FavoriteContext.Provider value={value}>
+    <FavoriteContext.Provider value={{ favoriteItems, addFavorite, removeFavorite, isFavorite }}>
       {children}
     </FavoriteContext.Provider>
   );

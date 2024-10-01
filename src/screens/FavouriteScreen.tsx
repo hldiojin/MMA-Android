@@ -1,9 +1,9 @@
 import React, { useState, useEffect } from 'react';
 import { View, Text, FlatList, Image, TouchableOpacity, StyleSheet } from 'react-native';
-import AsyncStorage from '@react-native-async-storage/async-storage';
 import { NavigationProp, useFocusEffect, useNavigation } from '@react-navigation/native';
 import { Swipeable } from 'react-native-gesture-handler';
 import { Ionicons } from '@expo/vector-icons'; // Using Ionicons for icons
+import { useFavorite } from './context/FavoriteContext'; // Đảm bảo đường dẫn đúng
 
 type ArtTool = {
   id: string;
@@ -22,29 +22,10 @@ type RootStackParamList = {
 
 const FavouriteScreen: React.FC = () => {
   const navigation = useNavigation<NavigationProp<RootStackParamList>>();
-  const [favoriteItems, setFavoriteItems] = useState<ArtTool[]>([]);
+  const { favoriteItems, removeFavorite } = useFavorite();
 
-  const loadFavorites = async () => {
-    try {
-      const storedFavorites = await AsyncStorage.getItem('favorites');
-      if (storedFavorites) {
-        setFavoriteItems(JSON.parse(storedFavorites));
-      }
-    } catch (error) {
-      console.error("Error loading favorites: ", error);
-    }
-  };
-
-  useFocusEffect(
-    React.useCallback(() => {
-      loadFavorites();
-    }, [])
-  );
-
-  const handleDelete = async (id: string) => {
-    const newFavorites = favoriteItems.filter(item => item.id !== id);
-    setFavoriteItems(newFavorites);
-    await AsyncStorage.setItem('favorites', JSON.stringify(newFavorites));
+  const handleDelete = (id: string) => {
+    removeFavorite(id);
   };
 
   const renderRightActions = (id: string) => (
